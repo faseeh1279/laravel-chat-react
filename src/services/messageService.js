@@ -2,14 +2,19 @@ import api from "../api/axios";
 
 const messageService = {
 
-    async getMessages() {
-        return await api.get("/messages");
+    async getMessages(conversationId) {
+        return await api.get(
+            `/conversations/${conversationId}/messages`
+        );
     },
 
-    async sendMessage(message) {
-        return await api.post("/messages", {
-            message,
-        });
+    async sendMessage(conversationId, message) {
+        return await api.post(
+            `/conversations/${conversationId}/messages`,
+            {
+                message,
+            }
+        );
     },
 
 };

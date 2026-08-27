@@ -39,8 +39,7 @@ const ConversationPanel = ({ conversation }) => {
         <div className="d-flex flex-column h-100">
 
             <ChatHeader
-                user={conversation.user}
-                online={conversation.online}
+                user={conversation.recipient}
             />
 
             <MessageList

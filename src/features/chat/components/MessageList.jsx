@@ -1,22 +1,26 @@
 import Message from "./Message";
 import { useEffect, useState } from "react";
-import pusher from "../../../services/pusher";
 import messageService from "../../../services/messageService";
 import userService from "../../../services/userService";
+import pusher from "../../../services/pusher";
 
-const MessageList = () => {
+const MessageList = ({ conversationId }) => {
 
     const [messages, setMessages] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
 
     const sortMessages = (messages) => {
         return [...messages].sort(
             (a, b) =>
-                new Date(a.created_at) - new Date(b.created_at)
+                new Date(a.created_at) -
+                new Date(b.created_at)
         );
     };
 
+    /*
+     * Load current user.
+     */
     useEffect(() => {
 
         const loadUser = async () => {
@@ -30,26 +34,51 @@ const MessageList = () => {
 
             } catch (error) {
 
-                console.error(error);
+                console.error(
+                    error.response?.data || error
+                );
 
             }
 
         };
 
+        loadUser();
+
+    }, []);
+
+    /*
+     * Load messages whenever
+     * conversation changes.
+     */
+    useEffect(() => {
+
+        if (!conversationId) {
+            setMessages([]);
+            return;
+        }
+
         const loadMessages = async () => {
 
             try {
 
-                const response =
-                    await messageService.getMessages();
+                setLoading(true);
 
-                setMessages(sortMessages(response.data));
+                const response =
+                    await messageService.getMessages(
+                        conversationId
+                    );
+
+                setMessages(
+                    sortMessages(response.data.data)
+                );
 
             } catch (error) {
 
                 console.error(
                     error.response?.data || error
                 );
+
+                setMessages([]);
 
             } finally {
 
@@ -59,42 +88,90 @@ const MessageList = () => {
 
         };
 
-        loadUser();
         loadMessages();
 
-    }, []);
+    }, [conversationId]);
 
+    /*
+     * Listen for real-time messages.
+     */
     useEffect(() => {
 
-        const channel = pusher.subscribe("chat");
+        if (!conversationId) {
+            return;
+        }
 
-        channel.bind("message.sent", (data) => {
+        const channelName =
+            `conversation.${conversationId}`;
 
-            console.log("New message:", data);
+        console.log(
+            "Subscribing to:",
+            channelName
+        );
 
-            setMessages((previousMessages) =>
-                sortMessages([
-                    ...previousMessages,
-                    data.message,
-                ])
+        const channel =
+            pusher.subscribe(channelName);
+
+        const handleMessage = (data) => {
+
+            console.log(
+                "Real-time message received:",
+                data
             );
 
-        });
+            setMessages((previousMessages) => {
 
-        return () => {
+                const messageExists =
+                    previousMessages.some(
+                        (message) =>
+                            message.id === data.message.id
+                    );
 
-            channel.unbind("message.sent");
-            pusher.unsubscribe("chat");
+                if (messageExists) {
+                    return previousMessages;
+                }
+
+                return sortMessages([
+                    ...previousMessages,
+                    data.message,
+                ]);
+
+            });
 
         };
 
-    }, []);
+        channel.bind(
+            "message.sent",
+            handleMessage
+        );
+
+        return () => {
+
+            console.log(
+                "Unsubscribing from:",
+                channelName
+            );
+
+            channel.unbind(
+                "message.sent",
+                handleMessage
+            );
+
+            pusher.unsubscribe(
+                channelName
+            );
+
+        };
+
+    }, [conversationId]);
 
     if (loading) {
 
         return (
             <div className="card-body d-flex justify-content-center align-items-center">
+
                 <div className="spinner-border text-primary" />
+
             </div>
         );
 
@@ -108,18 +185,40 @@ const MessageList = () => {
 
             <div className="d-flex flex-column gap-4">
 
-                {messages.map((message) => (
+                {messages.length === 0 ? (
 
-                    <Message
-                        key={message.id}
-                        message={{
-                            ...message,
-                            isMine:
-                                message.user_id === currentUser?.id,
-                        }}
-                    />
+                    <div className="text-center text-muted my-auto">
 
-                ))}
+                        <i className="bi bi-chat-square-text fs-2"></i>
+
+                        <div className="mt-2">
+                            No messages yet
+                        </div>
+
+                        <small>
+                            Start the conversation.
+                        </small>
+
+                    </div>
+
+                ) : (
+
+                    messages.map((message) => (
+
+                        <Message
+                            key={message.id}
+                            message={{
+                                ...message,
+
+                                isMine:
+                                    message.user?.id ===
+                                    currentUser?.id,
+                            }}
+                        />
+
+                    ))
+
+                )}
 
             </div>
 

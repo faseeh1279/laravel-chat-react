@@ -1,9 +1,7 @@
 import api from "../api/axios";
-
+import { useContext } from "react";
+import { AuthContext } from "../features/auth/context/AuthContext";
 const authService = {
-    // async csrf() {
-    //     return await api.get('/sanctum/csrf-cookie');
-    // },
 
     async login(credentials) {
         return await api.post('/login', credentials);
@@ -25,5 +23,7 @@ const authService = {
         return await api.post('/verify'); 
     }
 };
-
+export function useAuth() {
+    return useContext(AuthContext);
+}
 export default authService;

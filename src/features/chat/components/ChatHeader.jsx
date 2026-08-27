@@ -1,4 +1,8 @@
-const ChatHeader = ({ user, online }) => {
+const ChatHeader = ({ user }) => {
+
+    if (!user) {
+        return null;
+    }
 
     return (
         <div className="bg-white border-bottom py-3 px-3">
@@ -13,7 +17,7 @@ const ChatHeader = ({ user, online }) => {
                         height: "48px",
                     }}
                 >
-                    {user.name.charAt(0).toUpperCase()}
+                    {user.name?.charAt(0).toUpperCase()}
                 </div>
 
                 {/* User information */}
@@ -26,11 +30,7 @@ const ChatHeader = ({ user, online }) => {
                     <div className="d-flex align-items-center gap-2">
 
                         <span
-                            className={`rounded-circle ${
-                                online
-                                    ? "bg-success"
-                                    : "bg-secondary"
-                            }`}
+                            className="rounded-circle bg-secondary"
                             style={{
                                 width: "8px",
                                 height: "8px",
@@ -38,7 +38,7 @@ const ChatHeader = ({ user, online }) => {
                         />
 
                         <small className="text-muted">
-                            {online ? "Online" : "Offline"}
+                            Offline
                         </small>
 
                     </div>
