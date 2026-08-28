@@ -15,12 +15,38 @@ const MessageInput = ({ conversationId }) => {
         try {
             setSending(true);
 
-            const response = await messageService.sendMessage(
-                conversationId,
-                message.trim()
+            const response =
+                await messageService.sendMessage(
+                    conversationId,
+                    message.trim()
+                );
+
+            console.log(
+                "Message sent:",
+                response.data
             );
 
-            console.log("Message sent:", response.data);
+            /*
+             * Laravel returns:
+             *
+             * {
+             *     message: "...",
+             *     data: {...}
+             * }
+             *
+             * Send the created message
+             * to MessageList.
+             */
+            if (response.data?.data) {
+                window.dispatchEvent(
+                    new CustomEvent("message-created", {
+                        detail: {
+                            conversationId,
+                            message: response.data.data,
+                        },
+                    })
+                );
+            }
 
             setMessage("");
 

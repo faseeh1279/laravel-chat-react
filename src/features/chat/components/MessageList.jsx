@@ -19,6 +19,39 @@ const MessageList = ({ conversationId }) => {
     };
 
     /*
+     * Add message to state.
+     *
+     * The ID check is important because:
+     *
+     * API response -> adds message
+     * Pusher event -> tries to add same message
+     *
+     * We don't want it displayed twice.
+     */
+    const addMessage = (newMessage) => {
+        if (!newMessage?.id) {
+            return;
+        }
+
+        setMessages((previousMessages) => {
+            const messageExists =
+                previousMessages.some(
+                    (message) =>
+                        message.id === newMessage.id
+                );
+
+            if (messageExists) {
+                return previousMessages;
+            }
+
+            return sortMessages([
+                ...previousMessages,
+                newMessage,
+            ]);
+        });
+    };
+
+    /*
      * Load current user.
      */
     useEffect(() => {
@@ -35,6 +68,7 @@ const MessageList = ({ conversationId }) => {
             } catch (error) {
 
                 console.error(
+                    "Load current user failed:",
                     error.response?.data || error
                 );
 
@@ -68,13 +102,17 @@ const MessageList = ({ conversationId }) => {
                         conversationId
                     );
 
+                const loadedMessages =
+                    response.data?.data ?? [];
+
                 setMessages(
-                    sortMessages(response.data.data)
+                    sortMessages(loadedMessages)
                 );
 
             } catch (error) {
 
                 console.error(
+                    "Load messages failed:",
                     error.response?.data || error
                 );
 
@@ -89,11 +127,53 @@ const MessageList = ({ conversationId }) => {
         };
 
         loadMessages();
-
     }, [conversationId]);
 
     /*
-     * Listen for real-time messages.
+     * Listen for messages created
+     * by the current user through the API.
+     */
+    useEffect(() => {
+        const handleCreatedMessage = (event) => {
+            const {
+                conversationId: eventConversationId,
+                message,
+            } = event.detail || {};
+
+            /*
+             * Only add the message if it belongs
+             * to the conversation currently open.
+             */
+            if (
+                String(eventConversationId) !==
+                String(conversationId)
+            ) {
+                return;
+            }
+
+            console.log(
+                "Message created through API:",
+                message
+            );
+
+            addMessage(message);
+        };
+
+        window.addEventListener(
+            "message-created",
+            handleCreatedMessage
+        );
+
+        return () => {
+            window.removeEventListener(
+                "message-created",
+                handleCreatedMessage
+            );
+        };
+    }, [conversationId]);
+
+    /*
+     * Subscribe to private conversation channel.
      */
     useEffect(() => {
 
@@ -119,25 +199,16 @@ const MessageList = ({ conversationId }) => {
                 data
             );
 
-            setMessages((previousMessages) => {
+            if (!data?.message) {
+                console.error(
+                    "Invalid broadcast payload:",
+                    data
+                );
 
-                const messageExists =
-                    previousMessages.some(
-                        (message) =>
-                            message.id === data.message.id
-                    );
+                return;
+            }
 
-                if (messageExists) {
-                    return previousMessages;
-                }
-
-                return sortMessages([
-                    ...previousMessages,
-                    data.message,
-                ]);
-
-            });
-
+            addMessage(data.message);
         };
 
         channel.bind(
@@ -211,8 +282,8 @@ const MessageList = ({ conversationId }) => {
                                 ...message,
 
                                 isMine:
-                                    message.user?.id ===
-                                    currentUser?.id,
+                                    Number(message.user?.id) ===
+                                    Number(currentUser?.id),
                             }}
                         />
 
