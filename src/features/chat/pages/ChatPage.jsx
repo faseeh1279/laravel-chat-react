@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ConversationSidebar from "../components/ConversationSidebar";
 import ConversationPanel from "../components/ConversationPanel";
+import { MessageProvider } from "../context/MessageContext";
 // import { AppNavbar } from "../components/AppNavbar";
 
 export const ChatPage = () => {
@@ -42,12 +43,13 @@ export const ChatPage = () => {
 
                         {/* Right conversation */}
                         <div className="col h-100">
-
-                            <ConversationPanel
-                                conversation={
-                                    selectedConversation
-                                }
-                            />
+                            <MessageProvider>
+                                <ConversationPanel
+                                    conversation={
+                                        selectedConversation
+                                    }
+                                    />
+                            </MessageProvider>
 
                         </div>
 

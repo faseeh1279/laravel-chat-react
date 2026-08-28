@@ -1,9 +1,11 @@
 import { useState } from "react";
 import messageService from "../../../services/messageService";
-
+import { useMessage } from "../context/MessageContext";
 const MessageInput = ({ conversationId }) => {
     const [message, setMessage] = useState("");
     const [sending, setSending] = useState(false);
+
+    const { addMessage } = useMessage();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -27,25 +29,11 @@ const MessageInput = ({ conversationId }) => {
             );
 
             /*
-             * Laravel returns:
-             *
-             * {
-             *     message: "...",
-             *     data: {...}
-             * }
-             *
-             * Send the created message
-             * to MessageList.
+             * Add the message returned by Laravel
+             * to the shared MessageContext.
              */
             if (response.data?.data) {
-                window.dispatchEvent(
-                    new CustomEvent("message-created", {
-                        detail: {
-                            conversationId,
-                            message: response.data.data,
-                        },
-                    })
-                );
+                addMessage(response.data.data);
             }
 
             setMessage("");

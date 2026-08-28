@@ -3,12 +3,17 @@ import { useEffect, useState } from "react";
 import messageService from "../../../services/messageService";
 import userService from "../../../services/userService";
 import pusher from "../../../services/pusher";
-
+import { useMessage } from "../context/MessageContext";
 const MessageList = ({ conversationId }) => {
-
-    const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
+
+    const {
+        messages,
+        setConversationMessages,
+        clearMessages,
+        addMessage,
+    } = useMessage();
 
     const sortMessages = (messages) => {
         return [...messages].sort(
@@ -16,39 +21,6 @@ const MessageList = ({ conversationId }) => {
                 new Date(a.created_at) -
                 new Date(b.created_at)
         );
-    };
-
-    /*
-     * Add message to state.
-     *
-     * The ID check is important because:
-     *
-     * API response -> adds message
-     * Pusher event -> tries to add same message
-     *
-     * We don't want it displayed twice.
-     */
-    const addMessage = (newMessage) => {
-        if (!newMessage?.id) {
-            return;
-        }
-
-        setMessages((previousMessages) => {
-            const messageExists =
-                previousMessages.some(
-                    (message) =>
-                        message.id === newMessage.id
-                );
-
-            if (messageExists) {
-                return previousMessages;
-            }
-
-            return sortMessages([
-                ...previousMessages,
-                newMessage,
-            ]);
-        });
     };
 
     /*
@@ -81,13 +53,12 @@ const MessageList = ({ conversationId }) => {
     }, []);
 
     /*
-     * Load messages whenever
-     * conversation changes.
+     * Load messages when conversation changes.
      */
     useEffect(() => {
 
         if (!conversationId) {
-            setMessages([]);
+            clearMessages();
             return;
         }
 
@@ -105,7 +76,7 @@ const MessageList = ({ conversationId }) => {
                 const loadedMessages =
                     response.data?.data ?? [];
 
-                setMessages(
+                setConversationMessages(
                     sortMessages(loadedMessages)
                 );
 
@@ -116,7 +87,7 @@ const MessageList = ({ conversationId }) => {
                     error.response?.data || error
                 );
 
-                setMessages([]);
+                clearMessages();
 
             } finally {
 
@@ -127,49 +98,6 @@ const MessageList = ({ conversationId }) => {
         };
 
         loadMessages();
-    }, [conversationId]);
-
-    /*
-     * Listen for messages created
-     * by the current user through the API.
-     */
-    useEffect(() => {
-        const handleCreatedMessage = (event) => {
-            const {
-                conversationId: eventConversationId,
-                message,
-            } = event.detail || {};
-
-            /*
-             * Only add the message if it belongs
-             * to the conversation currently open.
-             */
-            if (
-                String(eventConversationId) !==
-                String(conversationId)
-            ) {
-                return;
-            }
-
-            console.log(
-                "Message created through API:",
-                message
-            );
-
-            addMessage(message);
-        };
-
-        window.addEventListener(
-            "message-created",
-            handleCreatedMessage
-        );
-
-        return () => {
-            window.removeEventListener(
-                "message-created",
-                handleCreatedMessage
-            );
-        };
     }, [conversationId]);
 
     /*
@@ -282,8 +210,8 @@ const MessageList = ({ conversationId }) => {
                                 ...message,
 
                                 isMine:
-                                    Number(message.user?.id) ===
-                                    Number(currentUser?.id),
+                                    message.user?.id ===
+                                    currentUser?.id,
                             }}
                         />
 
