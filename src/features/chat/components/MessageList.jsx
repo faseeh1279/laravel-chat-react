@@ -102,7 +102,7 @@ const MessageList = ({ conversationId }) => {
         }
 
         const channelName =
-            `conversation.${conversationId}`;
+            `private-conversation.${conversationId}`;
 
         console.log(
             "Subscribing to:",
